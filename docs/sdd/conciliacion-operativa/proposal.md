@@ -1,106 +1,89 @@
-# Propuesta: conciliacion operativa de transacciones
+# Propuesta aterrizada: conciliación operativa de transacciones
 
-## Problema
+## Problema de negocio
 
-Operaciones necesita identificar cada dia diferencias entre las intenciones de
-pago de la wallet, los resultados de los canales de proveedor y los asientos
-correspondientes del ledger. Sin una comparacion trazable, un resultado
-asincrono, un registro ausente o un importe distinto puede quedar oculto o
-interpretarse prematuramente como definitivo.
+Operaciones necesita detectar diariamente diferencias entre:
 
-## Objetivo
+1. intenciones registradas por wallet;
+2. resultados reportados por proveedor;
+3. asientos del ledger.
 
-Producir una vista diaria verificable que agrupe registros de las tres fuentes,
-clasifique su estado de conciliacion, registre descalces investigables y permita
-consultar un resumen filtrado por fecha y canal de proveedor.
+Sin una vista unificada por referencia transaccional, es difícil priorizar
+descalces y cerrar investigación con trazabilidad.
 
-## Alcance propuesto
+## Objetivo del MVP entregado
 
-### Incluido
+Entregar una solución operativa mínima que permita:
 
-- Lectura de intenciones de wallet, resultados de proveedor y asientos de ledger
-  mediante las fuentes disponibles en el MVP.
-- Normalizacion y correlacion determinista de registros.
-- Deteccion de ausencias, duplicados, diferencias de importe o moneda y estados
-  asincronos pendientes.
-- Persistencia de ejecuciones y de incidencias con evidencia y trazabilidad.
-- Consulta de resultados e incidencias por fecha y canal.
-- Resumen diario de transacciones conciliadas, no conciliadas y pendientes, y
-  recuento separado de incidencias resueltas.
-- Reprocesamiento idempotente de los mismos datos.
+- cargar registros normalizados por fuente;
+- ejecutar conciliación por fecha y canal;
+- visualizar descalces con detalle;
+- gestionar su estado de investigación;
+- consultar resumen diario agregado.
 
-### No incluido en el primer slice
+## Alcance implementado
 
-- Conectividad con proveedores financieros reales.
-- Escritura o correccion automatica de transacciones o asientos financieros.
-- Decisiones de conciliacion basadas en IA.
-- Agentes, MCP o explicaciones generativas como requisito para la salida diaria.
-- Reglas contables especificas no provistas por el dominio del MVP.
+### Backend (FastAPI + SQLite)
 
-La arquitectura deja puntos de integracion para futuras consultas asistidas por
-IA/MCP. Esas capacidades deberan consumir resultados existentes y no sustituir
-las reglas deterministas.
+- API para cargar lotes JSON en:
+  - `POST /api/v1/records/wallet`
+  - `POST /api/v1/records/provider`
+  - `POST /api/v1/records/ledger`
+- API para ejecutar corrida:
+  - `POST /api/v1/reconciliations`
+- API para consulta:
+  - `GET /api/v1/reconciliations`
+  - `GET /api/v1/reconciliations/{run_id}`
+  - `GET /api/v1/reconciliations/daily-summary`
+- API para investigación:
+  - `PATCH /api/v1/discrepancies/{id}`
+- Persistencia de:
+  - registros fuente (`source_records`);
+  - corridas (`reconciliation_runs`);
+  - descalces (`discrepancies`).
 
-## Usuarios y valor
+### Frontend (React + TypeScript)
 
-- **Analista de operaciones:** detecta y prioriza descalces, revisa evidencia y
-  actualiza el estado de investigacion.
-- **Responsable operativo:** consulta volumen, tendencias y progreso de
-  resolucion por dia y canal.
-- **Equipo de desarrollo:** puede reproducir una ejecucion y explicar por que
-  cada transaccion fue clasificada de una manera determinada.
+- Filtro por fecha y canal.
+- Ejecución de corridas.
+- Visualización de métricas:
+  - transacciones revisadas;
+  - conciliadas;
+  - por investigar;
+  - resueltas.
+- Tabla de descalces con acciones:
+  - pasar a `IN_PROGRESS`;
+  - resolver con nota (`RESOLVED`).
+- Panel para cargar lotes JSON por fuente.
 
-## Criterios de exito
+## Valor entregado
 
-1. Cada grupo conciliado se puede rastrear hasta sus registros de wallet,
-   proveedor y ledger.
-2. Cada descalce tiene referencia, tipo, evidencia y estado de investigacion.
-3. Una respuesta pendiente del proveedor no se reporta como un descalce
-   confirmado antes del umbral operativo acordado.
-4. El resumen y el detalle concuerdan para la misma fecha y canal, sin contar
-   dos veces una transaccion o incidencia.
-5. Repetir una ejecucion sobre los mismos datos no crea incidencias duplicadas.
+- Permite operación end-to-end local sin dependencias externas.
+- Reduce trabajo manual de cruce entre fuentes.
+- Da trazabilidad por referencia transaccional y tipo de descalce.
+- Habilita seguimiento de investigación y cierre operativo.
 
-## Supuestos
+## Limitaciones conocidas del MVP
 
-- El MVP usa servicios mock; no se presupone una integracion productiva externa.
-- Existe o se podra obtener una referencia estable que relacione las fuentes.
-- La fecha operativa se interpreta en la zona `America/Lima`, salvo que el
-  negocio confirme otra regla.
-- El estado de conciliacion y el estado de investigacion son dimensiones
-  distintas.
-- Los totales de conciliados/no conciliados describen transacciones; el total
-  de resueltos describe incidencias. No son categorias mutuamente excluyentes.
+- No existe SLA temporal para clasificar “pendiente” por ventana de espera.
+- `PENDING` del proveedor hoy se modela como descalce (`PROVIDER_NOT_SUCCESSFUL`).
+- No se permite reabrir descalces ya resueltos.
+- No hay autenticación/autorización por perfiles.
+- Solo una corrida por combinación `fecha + canal`.
+- No integra orígenes reales; recibe datos ya normalizados.
 
-## Riesgos y dependencias
+## Criterios de éxito verificados en esta versión
 
-- Claves de correlacion incompletas o no unicas pueden producir falsos
-  emparejamientos.
-- Los formatos, estados terminales y semantica de importes dependen de los
-  contratos reales de los mocks.
-- Sin un SLA para resultados asincronos, no se puede clasificar de forma
-  consistente una respuesta ausente como pendiente o descalce.
-- Persistencia y volumen esperado no estan especificados; esto afecta consultas,
-  retencion e idempotencia.
+1. Se puede ejecutar conciliación y obtener resumen por corrida.
+2. Se detectan descalces por faltantes, duplicados y diferencias de datos.
+3. El resumen diario agrega múltiples corridas de la misma fecha.
+4. Se puede resolver un descalce con nota y ver impacto en métricas.
+5. OpenAPI y documentación interactiva están disponibles (`/openapi.json`, `/docs`, `/redoc`).
 
-## Preguntas para cerrar antes de implementar
+## Siguiente alcance recomendado (post-MVP)
 
-1. Cual es la referencia canonica que comparten wallet, proveedor y ledger? Hay
-   casos en los que la correlacion requiere mas de una clave?
-2. Que estados del proveedor son terminales y cual es el SLA para marcar como
-   ausente una respuesta que sigue pendiente?
-3. La investigacion puede marcar una incidencia como resuelta solo un operador
-   autorizado, o tambien se permite una resolucion automatica al reconciliarse
-   los datos?
-4. Cuales son los canales MVP y como se representan registros sin canal?
-5. Que moneda(s), precision y politica de redondeo aplican?
-6. Que tecnologias, contratos y limites de paginacion tienen los servicios mock
-   actuales?
-7. Que roles pueden ejecutar conciliaciones y cambiar estados de investigacion,
-   y por cuanto tiempo se conserva la evidencia?
-
-## Decision solicitada
-
-Revisar y aprobar el alcance, los supuestos y las preguntas abiertas. La
-implementacion debe comenzar solo despues de inspeccionar las fuentes y acordar
-las reglas operativas que cambian la clasificacion de una transaccion.
+1. Definir SLA y estado “pendiente” temporal explícito.
+2. Incorporar control de acceso y auditoría de actor.
+3. Permitir reejecución idempotente versionada (más allá de bloqueo por unicidad).
+4. Integrar adaptadores desde fuentes reales (wallet/provider/ledger).
+5. Añadir paginación y filtros avanzados para volumen alto.
