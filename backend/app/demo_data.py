@@ -1,23 +1,21 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import ReconciliationRun, RecordSource, SourceRecord
-from app.reconciliation import build_reconciliation
+from app.models import RecordSource, SourceRecord
 
 
 def seed_demo_data(session: Session, business_date: date) -> bool:
-    has_source_records = session.scalar(
-        select(func.count()).select_from(SourceRecord)
+    reference_prefix = f"demo-{business_date:%Y%m%d}"
+    existing_demo_records = session.scalar(
+        select(func.count())
+        .select_from(SourceRecord)
+        .where(SourceRecord.transaction_reference.like(f"{reference_prefix}-%"))
     )
-    has_reconciliation_runs = session.scalar(
-        select(func.count()).select_from(ReconciliationRun)
-    )
-    if has_source_records or has_reconciliation_runs:
+    if existing_demo_records:
         return False
 
-    reference_prefix = f"demo-{business_date:%Y%m%d}"
     records = [
         SourceRecord(
             source=RecordSource.WALLET.value,
@@ -137,13 +135,16 @@ def seed_demo_data(session: Session, business_date: date) -> bool:
         ),
     ]
     session.add_all(records)
-    session.flush()
-
-    session.add_all(
-        [
-            build_reconciliation(session, business_date, "qr"),
-            build_reconciliation(session, business_date, "p2p"),
-        ]
-    )
     session.commit()
     return True
+
+
+def seed_previous_demo_days(
+    session: Session, current_date: date, days: int = 5
+) -> list[date]:
+    seeded_dates = []
+    for offset in range(days, 0, -1):
+        business_date = current_date - timedelta(days=offset)
+        if seed_demo_data(session, business_date):
+            seeded_dates.append(business_date)
+    return seeded_dates

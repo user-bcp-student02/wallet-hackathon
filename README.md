@@ -33,7 +33,10 @@ Wallet: intenciones y registros de transacciones de la wallet.
 Proveedor de pagos: resultados de procesamiento por canal, incluidos estados asíncronos.
 Ledger: asientos contables o movimientos financieros registrados por la wallet.
 
-Las fuentes se consumirán mediante los servicios mock existentes. No se presupone una conexión directa con proveedores financieros reales.
+El backend actual recibe lotes de registros ya normalizados mediante su API. Para
+desarrollo, genera datos sintéticos locales de wallet, proveedor y ledger para los
+cinco días anteriores; no consulta automáticamente servicios mock externos ni
+proveedores financieros reales.
 
 4.2. Motor de conciliación
 
@@ -73,7 +76,7 @@ Resumen diario de conciliación.
 Total de registros analizados.
 Total de operaciones conciliadas.
 Total de operaciones no conciliadas.
-Total de incidencias resueltas.
+Total de transacciones resueltas y, por separado, incidencias resueltas.
 Filtros por fecha y canal de proveedor.
 Listado de incidencias y vista de detalle.
 Consulta del estado actual de investigación.
@@ -143,38 +146,28 @@ Definir contratos claros entre frontend, backend, agentes y herramientas.
 Garantizar trazabilidad de las ejecuciones y las incidencias.
 Aplicar permisos mínimos a las herramientas MCP.
 Evitar que los agentes modifiquen directamente los registros financieros.
-7. Agentes y herramientas MCP
+7. Agente y herramientas MCP locales
 
-La implementación de agentes se realizará de forma incremental.
+El agente **Wallet Reconciliation Operator** se invoca manualmente en VS Code.
+Recibe fechas explícitas (puede resolver “ayer” usando `America/Lima`), consulta
+los datos disponibles y solicita al backend determinista las corridas pedidas.
+No hay scheduler ni ejecución automática al iniciar la API.
 
-Agente coordinador
+El servidor MCP local `wallet-reconciliation` se comunica con la API local y
+expone herramientas acotadas:
 
-Orquesta las consultas y organiza el flujo de conciliación y generación de reportes.
+- `list_available_reconciliation_data`: consulta conteos por fecha/canal/fuente
+  y si ya existe una corrida.
+- `run_reconciliation`: ejecuta solo si hay datos; ante una corrida existente
+  devuelve el reporte existente, sin intentar duplicarla.
+- `get_reconciliation_report`: consulta una corrida sin crearla.
+- `get_daily_reconciliation_summary`: consulta el resumen diario, con conteos
+  de transacciones e incidencias resueltas separados.
 
-Agente de conciliación
-
-Solicita los datos necesarios y utiliza el motor determinista para obtener resultados verificables.
-
-Agente de investigación
-
-Consulta la evidencia disponible y explica las causas posibles de una incidencia. Las conclusiones deben distinguir los hechos comprobados de las hipótesis.
-
-Agente de reporte
-
-Genera resúmenes diarios y responde preguntas operativas utilizando resultados de conciliación existentes.
-
-Herramientas MCP propuestas
-
-Los nombres son ilustrativos y deben adaptarse a los contratos reales de los servicios:
-
-get_wallet_transactions
-get_provider_results
-get_ledger_entries
-run_reconciliation
-get_reconciliation_exceptions
-get_daily_summary
-
-Las herramientas deben validar entradas, limitar los datos accesibles y registrar las operaciones relevantes. Las herramientas de consulta deben permanecer separadas de cualquier acción que modifique estados de investigación.
+El MCP no carga datos fuente ni cambia estados de investigación y no tiene
+acceso de escritura a wallet, proveedor o ledger. Los datos sembrados son
+sintéticos. Las instrucciones operativas reutilizables están en
+`.github/skills/wallet-reconciliation-operations/SKILL.md`.
 
 8. Plan de implementación
 Sprint 1 — Construcción end-to-end por slices
@@ -202,15 +195,15 @@ Objetivo: completar el MVP y validar su comportamiento operativo.
 
 Actividades:
 
-Implementar los agentes especializados por función.
-Levantar y configurar el servidor MCP.
-Integrar los agentes con las herramientas MCP.
-Completar reglas para duplicados, diferencias de importe, registros ausentes y estados asíncronos.
-Implementar filtros y resumen diario.
-Completar el seguimiento de incidencias.
-Incorporar explicaciones y resúmenes generados por IA.
-Validar permisos, manejo de errores y trazabilidad.
-Ejecutar pruebas de integración y regresión.
-Preparar y ensayar la demo final.
+[x] Configurar un agente operativo manual y su skill de ejecución.
+[x] Levantar el servidor MCP local e integrar las herramientas acotadas de conciliación.
+[x] Completar reglas para duplicados, diferencias de importe, registros ausentes y estados de proveedor.
+[x] Implementar filtros, resumen diario y seguimiento de incidencias.
+[x] Validar límites de operación, errores explícitos y no duplicación de corridas.
+[x] Ejecutar pruebas backend y build/type-check del frontend.
+[ ] Incorporar explicaciones generadas por IA y ensayar la demo final.
 
-Criterio de salida: el flujo de conciliación está integrado, los casos prioritarios están cubiertos y la IA explica
+Criterio de salida alcanzado para esta iteración: una persona puede consultar
+disponibilidad y solicitar manualmente una conciliación de punta a punta usando
+el agente MCP; la API conserva la autoridad sobre resultados y validaciones.
+Las explicaciones generadas por IA y cualquier scheduler siguen fuera de alcance.

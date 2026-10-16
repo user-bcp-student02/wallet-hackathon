@@ -84,6 +84,7 @@ def test_reconciles_matching_sources_and_reports_summary(client: TestClient) -> 
         "reconciled_count": 1,
         "unreconciled_count": 0,
         "resolved_count": 0,
+        "resolved_discrepancy_count": 0,
     }
 
 
@@ -118,6 +119,7 @@ def test_finds_missing_records_and_tracks_resolution(client: TestClient) -> None
         "reconciled_count": 0,
         "unreconciled_count": 0,
         "resolved_count": 1,
+        "resolved_discrepancy_count": 1,
     }
 
 
@@ -290,6 +292,7 @@ def test_filters_reports_and_aggregates_daily_summary_across_channels(
             "reconciled_count": 1,
             "unreconciled_count": 0,
             "resolved_count": 1,
+            "resolved_discrepancy_count": 1,
         },
     }
 
@@ -302,7 +305,73 @@ def test_filters_reports_and_aggregates_daily_summary_across_channels(
         "reconciled_count": 0,
         "unreconciled_count": 0,
         "resolved_count": 0,
+        "resolved_discrepancy_count": 0,
     }
+
+
+def test_summary_separates_resolved_transactions_and_discrepancies(
+    client: TestClient,
+) -> None:
+    load(client, "wallet", [record("tx-two-findings")])
+    load(
+        client,
+        "provider",
+        [record("tx-two-findings", amount=1200, status="FAILED")],
+    )
+
+    run = reconcile(client, "qr")
+    discrepancy_ids = [
+        item["id"]
+        for item in client.get(
+            f"/api/v1/reconciliations/{run['id']}"
+        ).json()["discrepancies"]
+    ]
+    assert len(discrepancy_ids) == 3
+
+    for discrepancy_id in discrepancy_ids:
+        response = client.patch(
+            f"/api/v1/discrepancies/{discrepancy_id}",
+            json={
+                "status": "RESOLVED",
+                "investigation_note": "Verified by operations.",
+            },
+        )
+        assert response.status_code == 200
+
+    summary = client.get(f"/api/v1/reconciliations/{run['id']}").json()["summary"]
+    assert summary["resolved_count"] == 1
+    assert summary["resolved_discrepancy_count"] == 3
+
+
+def test_record_availability_reports_counts_and_existing_runs(
+    client: TestClient,
+) -> None:
+    load(client, "wallet", [record("tx-availability")])
+    load(client, "provider", [record("tx-availability", status="PENDING")])
+    reconcile(client, "qr")
+
+    response = client.get(
+        "/api/v1/records/availability",
+        params={"reconciliation_date": "2026-10-15"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "reconciliation_date": "2026-10-15",
+        "channels": [
+            {
+                "channel": "qr",
+                "source_counts": {"wallet": 1, "provider": 1, "ledger": 0},
+                "total_records": 2,
+                "reconciliation_exists": True,
+            }
+        ],
+    }
+    empty_day = client.get(
+        "/api/v1/records/availability",
+        params={"reconciliation_date": "2026-10-14"},
+    )
+    assert empty_day.json()["channels"] == []
 
 
 def test_rejects_missing_provider_status_and_duplicate_daily_run(
@@ -325,6 +394,7 @@ def test_exposes_openapi_contract_and_interactive_docs(client: TestClient) -> No
     schema = schema_response.json()
     assert schema["info"]["title"] == "API de conciliación de billetera"
     assert "/api/v1/reconciliations/daily-summary" in schema["paths"]
+    assert "/api/v1/records/availability" in schema["paths"]
     assert schema["paths"]["/api/v1/records/{source}"]["post"]["tags"] == [
         "Registros de origen"
     ]

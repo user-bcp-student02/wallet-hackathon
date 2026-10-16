@@ -25,8 +25,12 @@ en [backend/app/](../../../backend/app/) y [frontend/src/](../../../frontend/src
 - Detección de descalces por faltantes, duplicados, diferencias de canal/monto/moneda
   y estado de proveedor no exitoso.
 - Consulta de reportes por fecha/canal y resumen diario agregado.
+- Disponibilidad de fuentes por fecha/canal y seed sintético idempotente de los
+  cinco días previos en `America/Lima`, sin crear corridas.
 - Gestión de investigación de descalces (`OPEN`, `IN_PROGRESS`, `RESOLVED`) con nota.
-- Dashboard React para ejecutar corridas, revisar métricas y resolver descalces.
+- Conteos separados de transacciones resueltas e incidencias resueltas en API y UI.
+- Dashboard React y agente MCP manual para ejecutar corridas, revisar métricas y
+  reportar resultados. No hay scheduler.
 
 ### Fuera de alcance actual
 

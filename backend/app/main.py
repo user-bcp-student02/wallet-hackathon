@@ -1,17 +1,18 @@
 from contextlib import asynccontextmanager
-from datetime import date
+from datetime import date, datetime
 import logging
 import os
 from typing import Annotated
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException, Path, Query
 from fastapi.openapi.utils import get_openapi
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import Base, SessionLocal, engine, get_session
-from app.demo_data import seed_demo_data
+from app.demo_data import seed_previous_demo_days
 from app.models import (
     Discrepancy,
     InvestigationStatus,
@@ -24,6 +25,7 @@ from app.schemas import (
     DiscrepancyResponse,
     DiscrepancyStatusUpdate,
     DailyReconciliationSummary,
+    RecordAvailability,
     ReconciliationReport,
     ReconciliationRequest,
     ReconciliationRunResult,
@@ -39,8 +41,13 @@ async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
     if demo_data_enabled():
         with SessionLocal() as session:
-            if seed_demo_data(session, date.today()):
-                logger.info("Se cargaron registros de demostración para el entorno de desarrollo.")
+            current_date = datetime.now(ZoneInfo("America/Lima")).date()
+            seeded_dates = seed_previous_demo_days(session, current_date)
+            if seeded_dates:
+                logger.info(
+                    "Se cargaron datos de demostración para las fechas: %s",
+                    ", ".join(item.isoformat() for item in seeded_dates),
+                )
     yield
 
 
@@ -80,6 +87,7 @@ def create_app() -> FastAPI:
             "Por ejemplo, `2590` representa S/ 25.90.\n"
             "- La referencia de transacción debe ser la misma en las fuentes que representan la misma operación.\n"
             "- Solo se permite una corrida por combinación de fecha y canal; una repetición devuelve `409`.\n"
+            "- El resumen distingue las transacciones resueltas de las incidencias resueltas.\n"
             "- La API no integra directamente con proveedores: recibe registros normalizados en lotes JSON."
         ),
         openapi_url="/openapi.json",
@@ -93,7 +101,7 @@ def create_app() -> FastAPI:
             {
                 "name": "Registros de origen",
                 "description": (
-                    "Carga movimientos normalizados de billetera, proveedor o libro contable. "
+                    "Consulta disponibilidad y carga movimientos normalizados de billetera, proveedor o libro contable. "
                     "Cada registro contiene referencia, fecha, canal, monto y moneda; el "
                     "resultado del proveedor también incluye un estado."
                 ),
@@ -129,6 +137,62 @@ def create_app() -> FastAPI:
     )
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get(
+        "/api/v1/records/availability",
+        response_model=RecordAvailability,
+        tags=["Registros de origen"],
+        summary="Consultar disponibilidad de registros para una fecha",
+        description=(
+            "Devuelve por canal el número de registros cargados para cada fuente y "
+            "si ya existe una corrida. No expone referencias ni datos de transacciones. "
+            "Una fecha sin registros devuelve una lista de canales vacía."
+        ),
+    )
+    def get_record_availability(
+        session: Annotated[Session, Depends(get_session)],
+        reconciliation_date: date = Query(
+            description="Fecha operativa que se desea verificar, en formato AAAA-MM-DD."
+        ),
+    ) -> RecordAvailability:
+        source_rows = session.execute(
+            select(
+                SourceRecord.channel,
+                SourceRecord.source,
+                func.count(SourceRecord.id),
+            )
+            .where(SourceRecord.transaction_date == reconciliation_date)
+            .group_by(SourceRecord.channel, SourceRecord.source)
+            .order_by(SourceRecord.channel, SourceRecord.source)
+        ).all()
+        runs = session.scalars(
+            select(ReconciliationRun).where(
+                ReconciliationRun.reconciliation_date == reconciliation_date
+            )
+        ).all()
+        run_channels = {run.channel for run in runs}
+
+        counts_by_channel: dict[str, dict[str, int]] = {}
+        for channel_name, source_name, count in source_rows:
+            counts_by_channel.setdefault(channel_name, {})[source_name] = count
+
+        channels = []
+        for channel_name, counts in counts_by_channel.items():
+            source_counts = {
+                source: counts.get(source.value, 0) for source in RecordSource
+            }
+            channels.append(
+                {
+                    "channel": channel_name,
+                    "source_counts": source_counts,
+                    "total_records": sum(source_counts.values()),
+                    "reconciliation_exists": channel_name in run_channels,
+                }
+            )
+        return RecordAvailability(
+            reconciliation_date=reconciliation_date,
+            channels=channels,
+        )
 
     @app.post(
         "/api/v1/records/{source}",
@@ -338,6 +402,9 @@ def create_app() -> FastAPI:
                 "reconciled_count": sum(item.reconciled_count for item in summaries),
                 "unreconciled_count": sum(item.unreconciled_count for item in summaries),
                 "resolved_count": sum(item.resolved_count for item in summaries),
+                "resolved_discrepancy_count": sum(
+                    item.resolved_discrepancy_count for item in summaries
+                ),
             },
         )
 
@@ -498,6 +565,10 @@ def create_app() -> FastAPI:
             "reconciled_count": "Transacciones conciliadas",
             "unreconciled_count": "Transacciones pendientes de investigación",
             "resolved_count": "Transacciones resueltas",
+            "resolved_discrepancy_count": "Incidencias resueltas",
+            "source_counts": "Registros por fuente",
+            "total_records": "Registros disponibles",
+            "reconciliation_exists": "Ya existe corrida",
             "channels": "Canales",
             "detail": "Detalle del error",
             "loc": "Ubicación del error",
@@ -650,6 +721,7 @@ def create_app() -> FastAPI:
             "reconciled_count": 1,
             "unreconciled_count": 2,
             "resolved_count": 0,
+            "resolved_discrepancy_count": 0,
         }
         report_qr = {
             "run_id": 11,
@@ -822,6 +894,7 @@ def create_app() -> FastAPI:
                                 "reconciled_count": 1,
                                 "unreconciled_count": 1,
                                 "resolved_count": 0,
+                                "resolved_discrepancy_count": 0,
                             },
                             "discrepancies": [
                                 {
@@ -856,6 +929,7 @@ def create_app() -> FastAPI:
                             "reconciled_count": 2,
                             "unreconciled_count": 3,
                             "resolved_count": 0,
+                            "resolved_discrepancy_count": 0,
                         },
                     },
                 },
@@ -869,6 +943,7 @@ def create_app() -> FastAPI:
                             "reconciled_count": 0,
                             "unreconciled_count": 0,
                             "resolved_count": 0,
+                            "resolved_discrepancy_count": 0,
                         },
                     },
                 },

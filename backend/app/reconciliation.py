@@ -140,6 +140,10 @@ def summarize(run: ReconciliationRun) -> ReconciliationSummary:
         all(status == InvestigationStatus.RESOLVED.value for status in statuses)
         for statuses in statuses_by_reference.values()
     )
+    resolved_discrepancy_count = sum(
+        discrepancy.status == InvestigationStatus.RESOLVED.value
+        for discrepancy in run.discrepancies
+    )
     unreconciled_count = sum(
         any(status != InvestigationStatus.RESOLVED.value for status in statuses)
         for statuses in statuses_by_reference.values()
@@ -149,4 +153,5 @@ def summarize(run: ReconciliationRun) -> ReconciliationSummary:
         reconciled_count=reconciled_count,
         unreconciled_count=unreconciled_count,
         resolved_count=resolved_count,
+        resolved_discrepancy_count=resolved_discrepancy_count,
     )

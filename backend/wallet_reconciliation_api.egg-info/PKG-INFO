@@ -4,6 +4,7 @@ Version: 0.1.0
 Summary: Daily reconciliation API for the Peru wallet MVP
 Requires-Python: >=3.12
 Requires-Dist: fastapi<1.0,>=0.115
+Requires-Dist: mcp<2.0,>=1.30
 Requires-Dist: sqlalchemy<3.0,>=2.0
 Requires-Dist: uvicorn[standard]<1.0,>=0.30
 Provides-Extra: dev
