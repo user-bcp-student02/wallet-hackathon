@@ -36,7 +36,8 @@ La corrida detecta:
 - diferencia de canal;
 - diferencia de monto;
 - diferencia de moneda;
-- resultado de proveedor no exitoso (`FAILED` o `PENDING`).
+- resultado de proveedor no exitoso (`FAILED` o `PENDING`), o tiempo de espera
+  superado (`TIMEOUT`).
 
 ### RF-05 Resumen por corrida
 
@@ -83,10 +84,22 @@ transaccionales.
 
 ### RF-12 Datos sintéticos de demostración
 
-En desarrollo, al iniciar la API se aseguran registros sintéticos para los cinco
+En desarrollo, al iniciar la API se aseguran registros sintéticos para los 14
 días calendario completos anteriores en `America/Lima`. El seed es idempotente,
-conserva registros existentes y no crea corridas. Se desactiva en producción o
-con `SEED_DEMO_DATA=false`.
+conserva registros existentes y no crea corridas. Incluye escenarios `TIMEOUT`
+en algunas fechas, que quedan `OPEN` para investigación manual desde la web.
+Se desactiva en producción o con `SEED_DEMO_DATA=false`.
+
+### RF-15 Auto-resolución limitada a errores funcionales de demostración
+
+Al crear una corrida, los escenarios sintéticos conocidos de diferencia de monto,
+resultado de proveedor faltante y estado `PENDING` se crean como `RESOLVED` con
+la nota `Se cierra automáticamente por error funcional`. Los escenarios
+`TIMEOUT` y los demás tipos permanecen abiertos. Esta regla se aplica solo a las
+referencias y registros conocidos del seed; los datos no demo conservan el flujo
+de investigación manual. Las transacciones auto-resueltas se incluyen en
+`transaction_count` y en los contadores de resueltas, pero no en
+`reconciled_count`.
 
 ### RF-13 Operación manual mediante agente MCP
 
@@ -142,7 +155,7 @@ Los tests en [backend/tests/test_reconciliation_api.py](../../../backend/tests/t
 5. filtros por fecha/canal y resumen diario agregado;
 6. errores esperados (`422`, `404`, `409`);
 7. exposición del contrato OpenAPI;
-8. disponibilidad de datos, seed de cinco días e idempotencia sin crear corridas;
+8. disponibilidad de datos, seed de 14 días con timeouts e idempotencia sin crear corridas;
 9. protección contra corridas sin datos y duplicados a través de tools MCP.
 
 ## 5) Diferencias entre diseño ideal y estado actual

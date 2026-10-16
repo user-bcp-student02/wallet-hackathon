@@ -53,9 +53,10 @@ Persona operadora
 ### Funcionalidad y límites (1 minuto)
 
 Explicar que se identifican registros faltantes o duplicados, diferencias de
-canal/monto/moneda y resultados de proveedor no exitosos. El estado `PENDING`
-del proveedor se clasifica como incidencia; no hay una ventana SLA temporal.
-Resolver exige nota y no hay reapertura.
+canal/monto/moneda y resultados de proveedor no exitosos. En los datos demo,
+los escenarios conocidos de monto, proveedor faltante y `PENDING` se cierran
+automáticamente con nota; `TIMEOUT` queda abierto para investigación manual. No
+hay una ventana SLA general. Resolver manualmente exige nota y no hay reapertura.
 
 La explicación de incidencias es determinista: separa hechos de hipótesis no
 verificadas, limita evidencia actual a 20 filas por fuente y puede ser
@@ -88,7 +89,7 @@ uvicorn app.main:app --reload
 
 La API debe iniciar en `http://127.0.0.1:8000`. Verifica la documentación en
 `http://127.0.0.1:8000/docs`. El seed local proporciona datos sintéticos para
-los cinco días calendario completos anteriores en `America/Lima`; no crea
+los 14 días calendario completos anteriores en `America/Lima`; no crea
 corridas automáticamente.
 
 ### Terminal 2: iniciar el frontend
@@ -126,7 +127,7 @@ revisa la ruta configurada en `.vscode/mcp.json`.
 2. Señala el indicador de conexión a la API, los filtros de fecha/canal y las
    tarjetas de resumen.
 3. Usa el selector de fecha para escoger una fecha de demostración reciente.
-   La disponibilidad sintética corresponde a los cinco días completos
+   La disponibilidad sintética corresponde a los 14 días completos
    anteriores según Lima.
 4. Explica que las métricas distinguen transacciones resueltas de incidencias
    resueltas; no son el mismo conteo.
@@ -141,7 +142,9 @@ fecha/canal con registros disponibles para la demostración.
 2. Expande una corrida para mostrar su ID, transacciones y descalces.
 3. Describe los estados `OPEN`, `IN_PROGRESS` y `RESOLVED`.
 4. Muestra los tipos de incidencia y explica que las reglas de comparación
-   pertenecen al backend.
+   pertenecen al backend. En datos sintéticos, monto distinto, proveedor faltante
+   y `PENDING` se cierran con la nota `Se cierra automáticamente por error
+   funcional`; `TIMEOUT` permanece abierto para investigación manual desde la web.
 
 ### Paso 3: demostrar una acción manual (opcional)
 

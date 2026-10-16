@@ -75,22 +75,36 @@ def test_demo_seed_preserves_existing_records_and_adds_synthetic_data() -> None:
     engine.dispose()
 
 
-def test_previous_five_demo_days_are_seeded_without_creating_runs() -> None:
+def test_previous_fourteen_demo_days_are_seeded_with_selected_timeouts() -> None:
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
     current_date = date(2026, 10, 16)
     expected_dates = [
+        date(2026, 10, 2),
+        date(2026, 10, 3),
+        date(2026, 10, 4),
+        date(2026, 10, 5),
+        date(2026, 10, 6),
+        date(2026, 10, 7),
+        date(2026, 10, 8),
+        date(2026, 10, 9),
+        date(2026, 10, 10),
         date(2026, 10, 11),
         date(2026, 10, 12),
         date(2026, 10, 13),
         date(2026, 10, 14),
         date(2026, 10, 15),
     ]
+    expected_timeout_dates = {
+        date(2026, 10, 4),
+        date(2026, 10, 9),
+        date(2026, 10, 13),
+    }
 
     with Session(engine) as session:
         assert seed_previous_demo_days(session, current_date) == expected_dates
         assert seed_previous_demo_days(session, current_date) == []
-        assert session.scalar(select(func.count()).select_from(SourceRecord)) == 70
+        assert session.scalar(select(func.count()).select_from(SourceRecord)) == 205
         assert session.scalar(select(func.count()).select_from(ReconciliationRun)) == 0
         seeded_dates = session.scalars(
             select(SourceRecord.transaction_date).distinct().order_by(
@@ -98,6 +112,34 @@ def test_previous_five_demo_days_are_seeded_without_creating_runs() -> None:
             )
         ).all()
         assert seeded_dates == expected_dates
+        timeout_dates = set(
+            session.scalars(
+                select(SourceRecord.transaction_date)
+                .where(SourceRecord.status == "TIMEOUT")
+                .distinct()
+            ).all()
+        )
+        assert timeout_dates == expected_timeout_dates
+
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+def test_timeout_scenario_is_added_idempotently_to_an_existing_demo_date() -> None:
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    business_date = date(2026, 10, 13)
+
+    with Session(engine) as session:
+        assert seed_demo_data(session, business_date) is True
+        assert seed_demo_data(session, business_date, include_timeout=True) is True
+        assert seed_demo_data(session, business_date, include_timeout=True) is False
+        assert session.scalar(select(func.count()).select_from(SourceRecord)) == 17
+        assert session.scalar(
+            select(func.count())
+            .select_from(SourceRecord)
+            .where(SourceRecord.status == "TIMEOUT")
+        ) == 1
 
     Base.metadata.drop_all(engine)
     engine.dispose()

@@ -26,7 +26,9 @@ en [backend/app/](../../../backend/app/) y [frontend/src/](../../../frontend/src
   y estado de proveedor no exitoso.
 - Consulta de reportes por fecha/canal y resumen diario agregado.
 - Disponibilidad de fuentes por fecha/canal y seed sintético idempotente de los
-  cinco días previos en `America/Lima`, sin crear corridas.
+  14 días previos en `America/Lima`, sin crear corridas.
+- Auto-resolución limitada a casos funcionales conocidos de demo; `TIMEOUT`
+  permanece abierto para investigación manual en la web.
 - Gestión de investigación de descalces (`OPEN`, `IN_PROGRESS`, `RESOLVED`) con nota.
 - Conteos separados de transacciones resueltas e incidencias resueltas en API y UI.
 - Dashboard React y agente MCP manual para ejecutar corridas, revisar métricas y

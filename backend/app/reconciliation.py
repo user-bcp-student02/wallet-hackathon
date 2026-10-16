@@ -26,6 +26,70 @@ SOURCE_DUPLICATE_TYPES = {
     RecordSource.LEDGER: DiscrepancyType.DUPLICATE_LEDGER_ENTRY,
 }
 REQUIRED_SOURCES = tuple(RecordSource)
+DEMO_AUTO_RESOLUTION_NOTE = "Se cierra automáticamente por error funcional"
+
+
+def _is_known_demo_functional_case(
+    reconciliation_date: date,
+    channel: str,
+    reference: str,
+    discrepancy_type: DiscrepancyType,
+    source_records: dict[RecordSource, list[SourceRecord]],
+) -> bool:
+    prefix = f"demo-{reconciliation_date:%Y%m%d}-"
+    records = [record for items in source_records.values() for record in items]
+    if not records or any(record.channel != channel for record in records):
+        return False
+
+    if (
+        channel == "qr"
+        and reference == f"{prefix}qr-002"
+        and discrepancy_type == DiscrepancyType.AMOUNT_MISMATCH
+    ):
+        return (
+            len(source_records.get(RecordSource.WALLET, [])) == 1
+            and len(source_records.get(RecordSource.PROVIDER, [])) == 1
+            and len(source_records.get(RecordSource.LEDGER, [])) == 1
+            and [
+                source_records[RecordSource.WALLET][0].amount_minor,
+                source_records[RecordSource.PROVIDER][0].amount_minor,
+                source_records[RecordSource.LEDGER][0].amount_minor,
+            ]
+            == [1500, 1600, 1500]
+            and source_records[RecordSource.PROVIDER][0].status == "SUCCESS"
+            and len({record.currency for record in records}) == 1
+        )
+
+    if (
+        channel == "qr"
+        and reference == f"{prefix}qr-003"
+        and discrepancy_type == DiscrepancyType.MISSING_PROVIDER_RESULT
+    ):
+        return (
+            len(source_records.get(RecordSource.WALLET, [])) == 1
+            and not source_records.get(RecordSource.PROVIDER)
+            and len(source_records.get(RecordSource.LEDGER, [])) == 1
+            and source_records[RecordSource.WALLET][0].amount_minor == 700
+            and source_records[RecordSource.LEDGER][0].amount_minor == 700
+            and source_records[RecordSource.WALLET][0].currency
+            == source_records[RecordSource.LEDGER][0].currency
+        )
+
+    if (
+        channel == "p2p"
+        and reference == f"{prefix}p2p-002"
+        and discrepancy_type == DiscrepancyType.PROVIDER_NOT_SUCCESSFUL
+    ):
+        return (
+            len(source_records.get(RecordSource.WALLET, [])) == 1
+            and len(source_records.get(RecordSource.PROVIDER, [])) == 1
+            and len(source_records.get(RecordSource.LEDGER, [])) == 1
+            and all(record.amount_minor == 1800 for record in records)
+            and len({record.currency for record in records}) == 1
+            and source_records[RecordSource.PROVIDER][0].status == "PENDING"
+        )
+
+    return False
 
 
 def build_reconciliation(
@@ -104,24 +168,44 @@ def build_reconciliation(
                 )
         unsuccessful = [record.status for record in provider if record.status != "SUCCESS"]
         if unsuccessful:
+            if "TIMEOUT" in unsuccessful:
+                details = "Tiempo de espera superado: el proveedor no respondió a tiempo."
+            else:
+                details = (
+                    "Provider result status is not SUCCESS: "
+                    + ", ".join(sorted({status or "missing" for status in unsuccessful}))
+                    + "."
+                )
             findings.append(
                 (
                     DiscrepancyType.PROVIDER_NOT_SUCCESSFUL,
-                    "Provider result status is not SUCCESS: "
-                    + ", ".join(sorted({status or "missing" for status in unsuccessful}))
-                    + ".",
+                    details,
                 )
             )
 
         if not findings:
             run.reconciled_count += 1
         for discrepancy_type, details in findings:
+            auto_resolved = _is_known_demo_functional_case(
+                reconciliation_date,
+                channel,
+                reference,
+                discrepancy_type,
+                source_records,
+            )
             run.discrepancies.append(
                 Discrepancy(
                     transaction_reference=reference,
                     discrepancy_type=discrepancy_type.value,
-                    status=InvestigationStatus.OPEN.value,
+                    status=(
+                        InvestigationStatus.RESOLVED.value
+                        if auto_resolved
+                        else InvestigationStatus.OPEN.value
+                    ),
                     details=details,
+                    investigation_note=(
+                        DEMO_AUTO_RESOLUTION_NOTE if auto_resolved else None
+                    ),
                 )
             )
 

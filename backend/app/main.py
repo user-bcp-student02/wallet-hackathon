@@ -215,8 +215,9 @@ def create_app() -> FastAPI:
             "de transacción, fecha operativa, canal, monto positivo en unidades menores y "
             "código de moneda de tres letras.\n\n"
             "Para `provider`, `status` es obligatorio y acepta `SUCCESS` (operación exitosa), "
-            "`FAILED` (operación fallida) o `PENDING` (resultado pendiente). Para `wallet` "
-            "y `ledger`, no se debe enviar `status`. La carga agrega registros; no reemplaza "
+            "`FAILED` (operación fallida), `PENDING` (resultado pendiente) o `TIMEOUT` "
+            "(tiempo de espera superado). Para `wallet` y `ledger`, no se debe enviar "
+            "`status`. La carga agrega registros; no reemplaza "
             "ni deduplica cargas previas. Las filas duplicadas pueden ser señaladas por la conciliación."
         ),
         responses={
@@ -278,7 +279,9 @@ def create_app() -> FastAPI:
             "por referencia de transacción. Detecta fuentes faltantes o duplicadas, "
             "diferencias de canal, monto y moneda, y resultados del proveedor distintos "
             "de `SUCCESS`. Una transacción sin descalces se cuenta como conciliada; una "
-            "corrida ya existente para la misma fecha y canal no se repite."
+            "corrida ya existente para la misma fecha y canal no se repite. Solo en datos "
+            "sintéticos conocidos de demo, algunos descalces funcionales se resuelven "
+            "automáticamente; `TIMEOUT` y los datos no demo quedan para investigación manual."
         ),
         responses={
             201: {"description": "Corrida creada; incluye su identificador y resumen de totales."},
@@ -712,7 +715,8 @@ def create_app() -> FastAPI:
             ),
             "ProviderStatus": (
                 "Resultado del proveedor",
-                "SUCCESS significa exitoso; FAILED significa fallido; PENDING significa pendiente.",
+                "SUCCESS significa exitoso; FAILED significa fallido; PENDING significa pendiente; "
+                "TIMEOUT significa que se superó el tiempo de espera.",
             ),
             "RecordSource": (
                 "Fuente de los registros",
@@ -924,18 +928,18 @@ def create_app() -> FastAPI:
             "id": 101,
             "transaction_reference": reference_qr_amount,
             "discrepancy_type": "AMOUNT_MISMATCH",
-            "status": "OPEN",
+            "status": "RESOLVED",
             "details": "Wallet, provider, and ledger amounts do not match.",
-            "investigation_note": None,
+            "investigation_note": "Se cierra automáticamente por error funcional",
             "created_at": "2026-10-16T14:00:00Z",
             "updated_at": "2026-10-16T14:00:00Z",
         }
         summary_qr = {
             "transaction_count": 3,
             "reconciled_count": 1,
-            "unreconciled_count": 2,
-            "resolved_count": 0,
-            "resolved_discrepancy_count": 0,
+            "unreconciled_count": 0,
+            "resolved_count": 2,
+            "resolved_discrepancy_count": 2,
         }
         report_qr = {
             "run_id": 11,
@@ -950,6 +954,8 @@ def create_app() -> FastAPI:
                     "transaction_reference": "demo-20261016-qr-003",
                     "discrepancy_type": "MISSING_PROVIDER_RESULT",
                     "details": "No provider record was found for this transaction.",
+                    "status": "RESOLVED",
+                    "investigation_note": "Se cierra automáticamente por error funcional",
                 },
             ],
         }
@@ -1104,11 +1110,11 @@ def create_app() -> FastAPI:
                             "reconciliation_date": "2026-10-16",
                             "channel": "p2p",
                             "summary": {
-                                "transaction_count": 2,
+                                "transaction_count": 3,
                                 "reconciled_count": 1,
                                 "unreconciled_count": 1,
-                                "resolved_count": 0,
-                                "resolved_discrepancy_count": 0,
+                                "resolved_count": 1,
+                                "resolved_discrepancy_count": 1,
                             },
                             "discrepancies": [
                                 {
@@ -1117,7 +1123,16 @@ def create_app() -> FastAPI:
                                     "transaction_reference": "demo-20261016-p2p-002",
                                     "discrepancy_type": "PROVIDER_NOT_SUCCESSFUL",
                                     "details": "Provider result status is not SUCCESS: PENDING.",
-                                }
+                                },
+                                {
+                                    **discrepancy_example,
+                                    "id": 104,
+                                    "transaction_reference": "demo-20261016-p2p-003",
+                                    "discrepancy_type": "PROVIDER_NOT_SUCCESSFUL",
+                                    "status": "OPEN",
+                                    "details": "Tiempo de espera superado: el proveedor no respondió a tiempo.",
+                                    "investigation_note": None,
+                                },
                             ],
                         },
                     ],

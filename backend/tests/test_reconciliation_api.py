@@ -88,6 +88,118 @@ def test_reconciles_matching_sources_and_reports_summary(client: TestClient) -> 
     }
 
 
+def test_auto_resolves_known_demo_cases_but_keeps_timeout_open(
+    client: TestClient,
+) -> None:
+    demo_prefix = "demo-20261015"
+    load(
+        client,
+        "wallet",
+        [
+            record(f"{demo_prefix}-qr-001", amount=2500),
+            record(f"{demo_prefix}-qr-002", amount=1500),
+            record(f"{demo_prefix}-qr-003", amount=700),
+        ],
+    )
+    load(
+        client,
+        "wallet",
+        [
+            record(f"{demo_prefix}-p2p-002", channel="p2p", amount=1800),
+            record(f"{demo_prefix}-p2p-003", channel="p2p", amount=1200),
+        ],
+    )
+    load(
+        client,
+        "provider",
+        [
+            record(f"{demo_prefix}-qr-001", amount=2500, status="SUCCESS"),
+            record(f"{demo_prefix}-qr-002", amount=1600, status="SUCCESS"),
+            record(f"{demo_prefix}-p2p-002", channel="p2p", amount=1800, status="PENDING"),
+            record(f"{demo_prefix}-p2p-003", channel="p2p", amount=1200, status="TIMEOUT"),
+        ],
+    )
+    load(
+        client,
+        "ledger",
+        [
+            record(f"{demo_prefix}-qr-001", amount=2500),
+            record(f"{demo_prefix}-qr-002", amount=1500),
+            record(f"{demo_prefix}-qr-003", amount=700),
+            record(f"{demo_prefix}-p2p-002", channel="p2p", amount=1800),
+            record(f"{demo_prefix}-p2p-003", channel="p2p", amount=1200),
+        ],
+    )
+
+    qr_run = reconcile(client, "qr")
+    assert qr_run["summary"] == {
+        "transaction_count": 3,
+        "reconciled_count": 1,
+        "unreconciled_count": 0,
+        "resolved_count": 2,
+        "resolved_discrepancy_count": 2,
+    }
+    qr_discrepancies = {
+        item["transaction_reference"]: item
+        for item in client.get(
+            f"/api/v1/reconciliations/{qr_run['id']}"
+        ).json()["discrepancies"]
+    }
+    for reference in (f"{demo_prefix}-qr-002", f"{demo_prefix}-qr-003"):
+        assert qr_discrepancies[reference]["status"] == "RESOLVED"
+        assert (
+            qr_discrepancies[reference]["investigation_note"]
+            == "Se cierra automáticamente por error funcional"
+        )
+
+    p2p_run = reconcile(client, "p2p")
+    assert p2p_run["summary"] == {
+        "transaction_count": 2,
+        "reconciled_count": 0,
+        "unreconciled_count": 1,
+        "resolved_count": 1,
+        "resolved_discrepancy_count": 1,
+    }
+    p2p_discrepancies = {
+        item["transaction_reference"]: item
+        for item in client.get(
+            f"/api/v1/reconciliations/{p2p_run['id']}"
+        ).json()["discrepancies"]
+    }
+    assert p2p_discrepancies[f"{demo_prefix}-p2p-002"]["status"] == "RESOLVED"
+    timeout = p2p_discrepancies[f"{demo_prefix}-p2p-003"]
+    assert timeout["status"] == "OPEN"
+    assert timeout["details"] == "Tiempo de espera superado: el proveedor no respondió a tiempo."
+    explanation = client.get(
+        f"/api/v1/discrepancies/{timeout['id']}/explanation"
+    )
+    assert explanation.status_code == 200
+    assert "TIMEOUT" in " ".join(explanation.json()["facts"])
+    assert "TIMEOUT" in explanation.json()["recommendation"]
+    unchanged = client.get(f"/api/v1/reconciliations/{p2p_run['id']}").json()
+    timeout_after_explanation = next(
+        item
+        for item in unchanged["discrepancies"]
+        if item["id"] == timeout["id"]
+    )
+    assert timeout_after_explanation["status"] == "OPEN"
+    assert timeout_after_explanation["investigation_note"] is None
+
+    manual_update = client.patch(
+        f"/api/v1/discrepancies/{timeout['id']}",
+        json={
+            "status": "IN_PROGRESS",
+            "investigation_note": "Se solicita confirmación manual al proveedor.",
+        },
+    )
+    assert manual_update.status_code == 200
+    assert manual_update.json()["status"] == "IN_PROGRESS"
+    assert (
+        manual_update.json()["investigation_note"]
+        == "Se solicita confirmación manual al proveedor."
+    )
+
+
 def test_finds_missing_records_and_tracks_resolution(client: TestClient) -> None:
     load(client, "wallet", [record("tx-missing-provider")])
     load(client, "ledger", [record("tx-missing-provider")])

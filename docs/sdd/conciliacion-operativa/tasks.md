@@ -18,6 +18,7 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 - [x] **RULE-03** Detección de mismatch de canal, monto y moneda.
 - [x] **RULE-04** Detección de estado de proveedor no exitoso.
 - [x] **RULE-05** Cálculo separado de transacciones resueltas (`resolved_count`) e incidencias resueltas (`resolved_discrepancy_count`).
+- [x] **RULE-06** Auto-resolución de escenarios funcionales conocidos del seed demo con nota explícita; `TIMEOUT` y registros no demo quedan para investigación manual.
 
 ### API
 
@@ -48,7 +49,7 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 
 - [x] **MCP-01** Servidor MCP stdio con herramientas limitadas a disponibilidad, corridas y consultas.
 - [x] **MCP-02** Agente de operación manual y skill/runbook para ejecutar y reportar conciliaciones.
-- [x] **MCP-03** Seed idempotente de cinco días sintéticos en `America/Lima`, sin crear corridas.
+- [x] **MCP-03** Seed idempotente de 14 días sintéticos en `America/Lima`, sin crear corridas y con `TIMEOUT` en algunas fechas.
 - [x] **MCP-04** Protección de no-data y recuperación de corrida existente; sin scheduler.
 - [x] **MCP-05** Tool de listado de historial con filtros y recorrido paginado de solo lectura.
 - [x] **MCP-06** Tool de explicación de incidencia y guía del agente para hechos, hipótesis y recomendación humana.
@@ -59,6 +60,7 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 - [x] **QA-02** Tests de seed demo e idempotencia de carga inicial.
 - [x] **QA-03** Tests MCP y validación de compilación TypeScript del frontend.
 - [x] **QA-04** Tests de explicaciones para los diez tipos, evidencia incompleta, lectura sin efectos y tool MCP.
+- [x] **QA-05** Tests de auto-resolución demo, casos `TIMEOUT`, métricas separadas y seed de 14 días.
 
 ## 2) Backlog recomendado (siguiente iteración)
 

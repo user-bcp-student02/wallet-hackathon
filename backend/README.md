@@ -25,11 +25,15 @@ desde `backend` con ese entorno activado antes de iniciar la API.
 
 Uvicorn queda escuchando por defecto en `http://127.0.0.1:8000`. La base SQLite se
 crea en `backend/wallet.db` si no existe; se puede cambiar mediante `DATABASE_URL`.
-En desarrollo, cada inicio asegura datos **sintéticos** para los cinco días
+En desarrollo, cada inicio asegura datos **sintéticos** para los 14 días
 calendario completos anteriores en `America/Lima`, con ejemplos QR y P2P de
-coincidencias y descalces. El seed es idempotente por fecha, conserva los registros
-existentes y **no crea corridas**: el usuario o el agente MCP las solicita
-explícitamente. El seed se desactiva en producción y puede apagarse localmente
+coincidencias, descalces y `TIMEOUT` en algunas fechas. El seed es idempotente por
+fecha, conserva los registros existentes y **no crea corridas**: el usuario o el
+agente MCP las solicita explícitamente. Al crear una corrida, solo los escenarios
+funcionales sintéticos conocidos se cierran automáticamente con la nota
+`Se cierra automáticamente por error funcional`. Los `TIMEOUT` quedan abiertos
+para investigación manual en la web; los datos no demo no se cierran automáticamente.
+El seed se desactiva en producción y puede apagarse localmente
 con `SEED_DEMO_DATA=false`.
 La documentación interactiva está en [Swagger UI](http://127.0.0.1:8000/docs) y
 [ReDoc](http://127.0.0.1:8000/redoc); el contrato OpenAPI JSON está en

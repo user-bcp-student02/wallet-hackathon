@@ -53,7 +53,7 @@ EXPLANATION_GUIDANCE: dict[DiscrepancyType, ExplanationGuidance] = {
     ),
     DiscrepancyType.PROVIDER_NOT_SUCCESSFUL: ExplanationGuidance(
         hypothesis="El estado actual del proveedor no es SUCCESS; por sí solo no confirma el resultado final de liquidación.",
-        recommendation="Verifica el estado exacto con el proveedor y evidencia de liquidación; trata PENDING como no concluyente.",
+        recommendation="Verifica el estado exacto con el proveedor, incluido TIMEOUT o PENDING, y la evidencia de liquidación antes de cerrar la incidencia.",
     ),
 }
 

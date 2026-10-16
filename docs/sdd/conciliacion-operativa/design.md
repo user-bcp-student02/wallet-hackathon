@@ -79,7 +79,7 @@ Tipos de descalce:
 
 Notas de comportamiento:
 
-- Si el proveedor viene con `FAILED` o `PENDING`, se marca `PROVIDER_NOT_SUCCESSFUL`.
+- Si el proveedor viene con `FAILED`, `PENDING` o `TIMEOUT`, se marca `PROVIDER_NOT_SUCCESSFUL`.
 - No existe estado transaccional `PENDING` en resumen; se usa:
   - `reconciled_count`
   - `unreconciled_count`
@@ -96,6 +96,10 @@ Notas de comportamiento:
 5. UI o MCP consulta el reporte y el resumen diario.
 6. Operaciones actualiza descalces (`IN_PROGRESS` o `RESOLVED` con nota) desde
    la UI; MCP no cambia estados.
+7. Para las referencias sintéticas conocidas del seed, el backend auto-resuelve
+   al crear la corrida los escenarios funcionales aprobados con la nota
+   `Se cierra automáticamente por error funcional`; los casos `TIMEOUT` quedan
+   abiertos para investigación manual.
 
 ## 5) Estados de investigación
 
@@ -132,9 +136,13 @@ Cliente HTTP en [frontend/src/api.ts](../../../frontend/src/api.ts):
 El seed está en [backend/app/demo_data.py](../../../backend/app/demo_data.py):
 
 - asegura registros sintéticos de wallet, provider y ledger en cada uno de los
-  cinco días completos anteriores a hoy en `America/Lima`;
+  14 días completos anteriores a hoy en `America/Lima`;
 - genera datos por fecha de forma idempotente, preserva registros existentes y
   no crea corridas;
+- incluye timeouts en algunas fechas; las corridas mantienen esos descalces
+  abiertos para investigación manual;
+- solo auto-resuelve los escenarios funcionales conocidos del seed demo al
+  ejecutar una corrida; la regla no afecta datos no demo;
 - se desactiva en producción o con `SEED_DEMO_DATA=false`.
 
 ## 8) Agente y servidor MCP

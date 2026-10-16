@@ -54,8 +54,8 @@ Ledger: asientos contables o movimientos financieros registrados por la wallet.
 
 El backend actual recibe lotes de registros ya normalizados mediante su API. Para
 desarrollo, genera datos sintéticos locales de wallet, proveedor y ledger para los
-cinco días anteriores; no consulta automáticamente servicios mock externos ni
-proveedores financieros reales.
+14 días completos anteriores, incluidos escenarios `TIMEOUT`; no consulta
+automáticamente servicios mock externos ni proveedores financieros reales.
 
 4.2. Motor de conciliación
 
@@ -269,8 +269,12 @@ confirmadas.
   observaciones, hipótesis no verificadas y recomendación; limita evidencia
   actual a 20 filas por fuente y puede responder `INCONCLUSIVE`. No modifica
   fuentes, notas, estados ni métricas.
-- Seed de desarrollo sintético e idempotente para los cinco días calendario
+- Seed de desarrollo sintético e idempotente para los 14 días calendario
   completos anteriores en `America/Lima`. No borra registros ni crea corridas.
+- En corridas con datos sintéticos, los casos demo conocidos de diferencia de
+  monto, proveedor faltante y proveedor `PENDING` se cierran con la nota
+  `Se cierra automáticamente por error funcional`; `TIMEOUT` queda abierto para
+  investigación manual. Esta regla no aplica a datos no demo.
 - No hay integración real a proveedores, autenticación/autorización ni
   scheduler. La API no debe exponerse a redes no confiables.
 

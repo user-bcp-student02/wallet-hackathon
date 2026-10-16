@@ -344,7 +344,7 @@ function App() {
                     <option value="ledger">Ledger</option>
                   </select>
                 </label>
-                <p>El proveedor requiere <code>status</code>: <code>SUCCESS</code>, <code>FAILED</code> o <code>PENDING</code>.</p>
+                <p>El proveedor requiere <code>status</code>: <code>SUCCESS</code>, <code>FAILED</code>, <code>PENDING</code> o <code>TIMEOUT</code>.</p>
               </div>
               <label className="json-label" htmlFor="records-json">Registros JSON</label>
               <textarea id="records-json" spellCheck={false} value={recordsJson} onChange={(event) => setRecordsJson(event.target.value)} rows={8} />

@@ -15,6 +15,7 @@ class ProviderStatus(StrEnum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
     PENDING = "PENDING"
+    TIMEOUT = "TIMEOUT"
 
 
 class SourceRecordInput(BaseModel):
@@ -46,9 +47,9 @@ class SourceRecordInput(BaseModel):
     status: ProviderStatus | None = Field(
         default=None,
         description=(
-            "Resultado informado por el proveedor: SUCCESS (exitoso), FAILED (fallido) "
-            "o PENDING (pendiente). Es obligatorio para la fuente provider y debe "
-            "omitirse para wallet y ledger."
+            "Resultado informado por el proveedor: SUCCESS (exitoso), FAILED (fallido), "
+            "PENDING (pendiente) o TIMEOUT (tiempo de espera superado). Es obligatorio "
+            "para la fuente provider y debe omitirse para wallet y ledger."
         ),
         examples=["SUCCESS"],
     )
