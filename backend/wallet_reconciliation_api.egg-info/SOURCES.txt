@@ -2,12 +2,10 @@ README.md
 pyproject.toml
 app/__init__.py
 app/database.py
-app/demo_data.py
 app/main.py
 app/models.py
 app/reconciliation.py
 app/schemas.py
-tests/test_demo_data.py
 tests/test_reconciliation_api.py
 wallet_reconciliation_api.egg-info/PKG-INFO
 wallet_reconciliation_api.egg-info/SOURCES.txt
