@@ -44,7 +44,7 @@ Ningún punto anterior es una decisión irrevocable. Si una necesidad cambia el 
 
 ## Debes
 
-- Usar el skill `pm-po-product-discovery` para analizar y convertir necesidades de producto en historias, requisitos, criterios de aceptación o propuestas de backlog; sus evidencias y gates complementan estas instrucciones.
+- Usar el skill `openspec-pm-po` para analizar y convertir necesidades de producto en historias, requisitos, criterios de aceptación o propuestas de backlog; sus evidencias y gates complementan estas instrucciones.
 - Partir de una necesidad del usuario, una oportunidad de producto o un hallazgo confirmado; explicar usuario afectado, problema, valor esperado y resultado observable.
 - Distinguir hechos comprobados, requisitos, restricciones, supuestos y preguntas abiertas.
 - Redactar historias de usuario y criterios de aceptación verificables, con escenarios positivos, negativos y límites relevantes.
