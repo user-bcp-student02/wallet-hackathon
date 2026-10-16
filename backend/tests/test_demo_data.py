@@ -1,4 +1,5 @@
 from datetime import date
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
@@ -7,6 +8,10 @@ from app.database import Base
 from app.demo_data import seed_demo_data, seed_previous_demo_days
 from app.main import demo_data_enabled
 from app.models import ReconciliationRun, SourceRecord
+
+
+def test_operational_timezone_is_available() -> None:
+    assert ZoneInfo("America/Lima").key == "America/Lima"
 
 
 def test_demo_data_is_enabled_by_default_only_outside_production(

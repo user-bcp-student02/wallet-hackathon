@@ -17,6 +17,12 @@ python -m pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
+En Windows, la dependencia `tzdata` se instala automáticamente junto con el
+proyecto y proporciona la base de zonas horarias que Python necesita para
+resolver `America/Lima`. Si ya tenías creado el entorno virtual antes de que se
+agregara esta dependencia, vuelve a ejecutar `python -m pip install -e ".[dev]"`
+desde `backend` con ese entorno activado antes de iniciar la API.
+
 Uvicorn queda escuchando por defecto en `http://127.0.0.1:8000`. La base SQLite se
 crea en `backend/wallet.db` si no existe; se puede cambiar mediante `DATABASE_URL`.
 En desarrollo, cada inicio asegura datos **sintéticos** para los cinco días
