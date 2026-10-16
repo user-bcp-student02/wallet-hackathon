@@ -96,6 +96,24 @@ class SourceRecordLoadResult(BaseModel):
     model_config = ConfigDict(title="Resultado de carga de registros")
 
 
+class ChannelRecordAvailability(BaseModel):
+    channel: str = Field(description="Canal con registros de origen disponibles.")
+    source_counts: dict[RecordSource, int] = Field(
+        description="Cantidad de registros disponibles por fuente."
+    )
+    total_records: int = Field(description="Cantidad total de registros de origen.")
+    reconciliation_exists: bool = Field(
+        description="Indica si ya existe una corrida para esta fecha y canal."
+    )
+
+
+class RecordAvailability(BaseModel):
+    reconciliation_date: date = Field(description="Fecha operativa consultada.")
+    channels: list[ChannelRecordAvailability] = Field(
+        description="Canales que tienen al menos un registro disponible."
+    )
+
+
 class ReconciliationRequest(BaseModel):
     reconciliation_date: date = Field(
         description="Fecha operativa cuyos registros se compararán, en formato AAAA-MM-DD.",
@@ -172,6 +190,9 @@ class ReconciliationSummary(BaseModel):
     reconciled_count: int = Field(description="Transacciones sin ningún descalce detectado.")
     unreconciled_count: int = Field(description="Transacciones con al menos un descalce que aún no está resuelto.")
     resolved_count: int = Field(description="Transacciones con descalces y con todos sus descalces resueltos.")
+    resolved_discrepancy_count: int = Field(
+        description="Cantidad de incidencias individuales cuyo estado actual es RESOLVED."
+    )
 
     model_config = ConfigDict(title="Resumen de conciliación")
 

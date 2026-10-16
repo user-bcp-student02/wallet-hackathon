@@ -19,9 +19,12 @@ uvicorn app.main:app --reload
 
 Uvicorn queda escuchando por defecto en `http://127.0.0.1:8000`. La base SQLite se
 crea en `backend/wallet.db` si no existe; se puede cambiar mediante `DATABASE_URL`.
-En desarrollo, una base vacía recibe automáticamente registros de ejemplo para la
-fecha actual, con corridas QR y P2P y varios tipos de descalce. Si la base ya contiene
-registros o corridas, no se agregan datos de demostración.
+En desarrollo, cada inicio asegura datos **sintéticos** para los cinco días
+calendario completos anteriores en `America/Lima`, con ejemplos QR y P2P de
+coincidencias y descalces. El seed es idempotente por fecha, conserva los registros
+existentes y **no crea corridas**: el usuario o el agente MCP las solicita
+explícitamente. El seed se desactiva en producción y puede apagarse localmente
+con `SEED_DEMO_DATA=false`.
 La documentación interactiva está en [Swagger UI](http://127.0.0.1:8000/docs) y
 [ReDoc](http://127.0.0.1:8000/redoc); el contrato OpenAPI JSON está en
 `http://127.0.0.1:8000/openapi.json`.
@@ -48,6 +51,8 @@ uvicorn app.main:app --reload
 
 - `POST /api/v1/records/wallet`, `/provider`, `/ledger`: guarda lotes de hasta 1,000
   registros normalizados. Los montos son enteros en unidades menores; para PEN, céntimos.
+- `GET /api/v1/records/availability?reconciliation_date=AAAA-MM-DD`: devuelve por canal
+  los conteos de registros por fuente y si ya existe una corrida, sin exponer referencias.
 - `POST /api/v1/reconciliations`: crea una corrida diaria para una fecha y un canal.
 - `GET /api/v1/reconciliations?reconciliation_date=AAAA-MM-DD&channel=qr`: consulta
   reportes filtrados por fecha y, opcionalmente, canal.
@@ -65,7 +70,38 @@ del ledger deben definirse antes del uso en producción.
 
 Los resúmenes cuentan referencias de transacción distintas: conciliadas (sin descalces),
 pendientes (con al menos un descalce no resuelto) y resueltas (con descalces y todos
-resueltos). Estas categorías son mutuamente excluyentes.
+resueltos). `resolved_discrepancy_count` cuenta por separado las incidencias resueltas;
+no debe confundirse con `resolved_count`, que cuenta transacciones resueltas.
+
+## Agente y MCP local
+
+La configuración `.vscode/mcp.json` agrega el servidor MCP local
+`wallet-reconciliation` por stdio. Conserva también el servidor `github-local`
+preexistente. Para usarlo:
+
+1. Crea/activa el entorno virtual e instala dependencias desde `backend/` con
+   `python -m pip install -e ".[dev]"`.
+2. En otra terminal inicia la API con `uvicorn app.main:app --reload`.
+3. En VS Code reinicia el servidor MCP `wallet-reconciliation` desde la vista de
+   servidores MCP si ya estaba iniciado.
+4. Invoca el agente **Wallet Reconciliation Operator** y solicita una fecha o
+   varias fechas. Puedes pedir canales específicos; si no indicas canales, el
+   agente puede usar los canales que informe la consulta de disponibilidad.
+
+Las tools disponibles son:
+
+- `list_available_reconciliation_data`: consulta fuentes/canales disponibles y
+  corridas existentes para una fecha.
+- `run_reconciliation`: requiere datos para el canal solicitado; si ya hay
+  corrida, devuelve esa corrida existente en vez de intentar duplicarla.
+- `get_reconciliation_report`: consulta una corrida existente sin crearla.
+- `get_daily_reconciliation_summary`: consulta el resumen diario.
+
+El MCP no carga datos, no cambia estados de investigación y no escribe en las
+fuentes financieras. La API debe estar corriendo localmente; si está inaccesible,
+la tool reporta el error explícitamente. No hay scheduler configurado: las
+conciliaciones se ejecutan solo cuando el usuario lo solicita. Los datos demo
+no son datos reales ni se deben usar para operaciones financieras.
 
 ## Tests
 

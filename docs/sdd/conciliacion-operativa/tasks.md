@@ -17,7 +17,7 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 - [x] **RULE-02** Detección de duplicados por fuente.
 - [x] **RULE-03** Detección de mismatch de canal, monto y moneda.
 - [x] **RULE-04** Detección de estado de proveedor no exitoso.
-- [x] **RULE-05** Cálculo de resumen (`transaction_count`, `reconciled_count`, `unreconciled_count`, `resolved_count`).
+- [x] **RULE-05** Cálculo separado de transacciones resueltas (`resolved_count`) e incidencias resueltas (`resolved_discrepancy_count`).
 
 ### API
 
@@ -29,6 +29,8 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 - [x] **API-06** Endpoint de detalle por corrida (`GET /api/v1/reconciliations/{run_id}`).
 - [x] **API-07** Endpoint de actualización de descalce (`PATCH /api/v1/discrepancies/{discrepancy_id}`).
 - [x] **API-08** OpenAPI documentado y UI de docs (`/openapi.json`, `/docs`, `/redoc`).
+- [x] **API-09** Disponibilidad por fecha/canal y conteos por fuente (`GET /api/v1/records/availability`).
+- [x] **API-10** Resumen diario con conteos independientes de transacciones e incidencias resueltas.
 
 ### Frontend
 
@@ -38,11 +40,20 @@ Este plan refleja el estado real del MVP ya implementado y el backlog sugerido.
 - [x] **UI-04** Visualización de descalces por corrida.
 - [x] **UI-05** Flujo de investigación y resolución con nota.
 - [x] **UI-06** Carga de lotes JSON por fuente.
+- [x] **UI-07** Métricas de transacciones resueltas e incidencias resueltas separadas.
+
+### Operación asistida con MCP
+
+- [x] **MCP-01** Servidor MCP stdio con herramientas limitadas a disponibilidad, corridas y consultas.
+- [x] **MCP-02** Agente de operación manual y skill/runbook para ejecutar y reportar conciliaciones.
+- [x] **MCP-03** Seed idempotente de cinco días sintéticos en `America/Lima`, sin crear corridas.
+- [x] **MCP-04** Protección de no-data y recuperación de corrida existente; sin scheduler.
 
 ### Calidad
 
 - [x] **QA-01** Tests de API para conciliación, filtros, errores y OpenAPI.
 - [x] **QA-02** Tests de seed demo e idempotencia de carga inicial.
+- [x] **QA-03** Tests MCP y validación de compilación TypeScript del frontend.
 
 ## 2) Backlog recomendado (siguiente iteración)
 

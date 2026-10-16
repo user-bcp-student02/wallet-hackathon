@@ -19,6 +19,7 @@ Definida en [backend/app/main.py](../../../backend/app/main.py):
 
 - `GET /health`
 - `POST /api/v1/records/{source}`
+- `GET /api/v1/records/availability`
 - `POST /api/v1/reconciliations`
 - `GET /api/v1/reconciliations`
 - `GET /api/v1/reconciliations/daily-summary`
@@ -80,16 +81,19 @@ Notas de comportamiento:
 - No existe estado transaccional `PENDING` en resumen; se usa:
   - `reconciled_count`
   - `unreconciled_count`
-  - `resolved_count`
-- `resolved_count` cuenta referencias cuyos descalces están todos en `RESOLVED`.
+  - `resolved_count` para transacciones con todos sus descalces resueltos
+  - `resolved_discrepancy_count` para incidencias resueltas individualmente
 
 ## 4) Flujo funcional actual
 
-1. Operaciones carga lotes por fuente.
-2. Operaciones ejecuta corrida para fecha/canal.
-3. Backend crea corrida y descalces detectados.
-4. UI consulta reportes y resumen diario.
-5. Operaciones actualiza descalces (`IN_PROGRESS` o `RESOLVED` con nota).
+1. Operaciones carga lotes por fuente, o el seed local genera datos sintéticos.
+2. Operaciones o el agente MCP consulta la disponibilidad para la fecha/canal.
+3. Operaciones ejecuta una corrida desde UI/API, o el agente lo hace solo por
+   petición explícita y cuando los datos están disponibles.
+4. Backend crea corrida y descalces detectados.
+5. UI o MCP consulta el reporte y el resumen diario.
+6. Operaciones actualiza descalces (`IN_PROGRESS` o `RESOLVED` con nota) desde
+   la UI; MCP no cambia estados.
 
 ## 5) Estados de investigación
 
@@ -121,20 +125,37 @@ Cliente HTTP en [frontend/src/api.ts](../../../frontend/src/api.ts):
 - manejo de errores con `ApiError`;
 - operaciones CRUD del flujo operativo.
 
-## 7) Datos demo y entorno
+## 7) Datos sintéticos y entorno
 
 El seed está en [backend/app/demo_data.py](../../../backend/app/demo_data.py):
 
-- carga dataset demo sólo si BD está vacía;
-- crea corridas demo para `qr` y `p2p`;
+- asegura registros sintéticos de wallet, provider y ledger en cada uno de los
+  cinco días completos anteriores a hoy en `America/Lima`;
+- genera datos por fecha de forma idempotente, preserva registros existentes y
+  no crea corridas;
 - se desactiva en producción o con `SEED_DEMO_DATA=false`.
 
-## 8) Cobertura de pruebas
+## 8) Agente y servidor MCP
+
+El servidor [backend/app/mcp_server.py](../../../backend/app/mcp_server.py) usa
+stdio y consume la API local existente. Expone herramientas para disponibilidad,
+ejecución explícita, reporte de corrida y resumen diario. Comprueba que haya
+datos antes de crear una corrida, y ante una corrida ya existente devuelve el
+reporte en vez de duplicarla.
+
+El agente [Wallet Reconciliation Operator](../../../.github/agents/reconciliation-operator.agent.md)
+y la skill
+[wallet-reconciliation-operations](../../../.github/skills/wallet-reconciliation-operations/SKILL.md)
+definen un flujo manual con límites de operación. No cargan o editan fuentes ni
+resuelven incidencias, y no incluyen scheduler.
+
+## 9) Cobertura de pruebas
 
 Pruebas en:
 
 - [backend/tests/test_reconciliation_api.py](../../../backend/tests/test_reconciliation_api.py)
 - [backend/tests/test_demo_data.py](../../../backend/tests/test_demo_data.py)
+- [backend/tests/test_mcp_server.py](../../../backend/tests/test_mcp_server.py)
 
 Validan:
 
@@ -143,9 +164,10 @@ Validan:
 - resolución de descalces y efecto en resumen;
 - filtros por fecha/canal y resumen diario;
 - validaciones de API y unicidad de corrida;
-- disponibilidad de OpenAPI/docs.
+- disponibilidad de OpenAPI/docs;
+- seed sintético, disponibilidad y garantías operativas de las herramientas MCP.
 
-## 9) Limitaciones técnicas vigentes
+## 10) Limitaciones técnicas vigentes
 
 - Sin autenticación/autorización.
 - Sin historial de eventos de investigación por actor (solo estado actual y nota).

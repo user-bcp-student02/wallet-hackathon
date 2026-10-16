@@ -108,7 +108,7 @@ h1 { margin: 10px 0 6px; color: #1d2c26; font: 700 27px "Manrope", sans-serif; l
 .alert-success > span { color: white; background: #4a9c7d; }
 .alert > button { margin-left: auto; border: 0; color: inherit; background: none; font-size: 18px; }
 
-.metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 13px; margin: 17px 0; }
+.metrics-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 13px; margin: 17px 0; }
 .metric-card { min-height: 128px; padding: 16px 17px 14px; border: 1px solid var(--line); border-radius: 9px; background: #fff; box-shadow: 0 3px 12px #29473b07; }
 .metric-top { display: flex; align-items: center; justify-content: space-between; color: #77847d; font-size: 10px; font-weight: 500; }
 .metric-icon { display: grid; width: 25px; height: 25px; place-items: center; border-radius: 7px; font-size: 12px; font-weight: 700; }

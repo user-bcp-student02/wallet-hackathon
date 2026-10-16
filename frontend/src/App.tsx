@@ -16,6 +16,7 @@ const emptySummary: Summary = {
   reconciled_count: 0,
   unreconciled_count: 0,
   resolved_count: 0,
+  resolved_discrepancy_count: 0,
 };
 const discrepancyLabels: Record<Discrepancy["discrepancy_type"], string> = {
   MISSING_WALLET_RECORD: "Falta en wallet",
@@ -288,8 +289,15 @@ function App() {
               tone="amber"
             />
             <MetricCard
-              label="Resueltas"
+              label="Transacciones resueltas"
               value={summary.resolved_count}
+              caption="Todas sus incidencias cerradas"
+              icon="↗"
+              tone="blue"
+            />
+            <MetricCard
+              label="Incidencias resueltas"
+              value={summary.resolved_discrepancy_count}
               caption="Descalces investigados"
               icon="↗"
               tone="blue"

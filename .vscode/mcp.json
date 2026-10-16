@@ -1,12 +1,17 @@
 {
 	"servers": {
-		"github-official": {
-			"type": "http",
-			"url": "https://api.githubcopilot.com/mcp/"
+		"github-local": {
+		"type": "http",
+		"url": "http://localhost:8081/mcp"
 		},
-		"github-official-all": {
-			"url": "https://api.githubcopilot.com/mcp/x/all",
-			"type": "http"
+		"wallet-reconciliation": {
+			"type": "stdio",
+			"command": "${workspaceFolder}\\backend\\.venv\\Scripts\\python.exe",
+			"args": ["-m", "app.mcp_server"],
+			"cwd": "${workspaceFolder}\\backend",
+			"env": {
+				"RECONCILIATION_API_URL": "http://127.0.0.1:8000"
+			}
 		}
 	},
 	"inputs": []

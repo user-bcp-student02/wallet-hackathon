@@ -16,6 +16,7 @@ export interface Summary {
   reconciled_count: number;
   unreconciled_count: number;
   resolved_count: number;
+  resolved_discrepancy_count: number;
 }
 
 export interface Discrepancy {
