@@ -8,6 +8,25 @@ El sistema permite detectar descalces financieros, identificar operaciones pendi
 
 La solución utiliza servicios mock existentes para simular las fuentes de información y contempla el uso de agentes de IA y herramientas MCP (Model Context Protocol) para apoyar la consulta, el análisis y la explicación de las incidencias detectadas.
 
+## Preparar el backend local en Windows
+
+Desde la raíz del repositorio, crea y activa el entorno virtual e instala las
+dependencias del backend:
+
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+uvicorn app.main:app --reload
+```
+
+La instalación incluye `tzdata` en Windows, necesaria para que Python encuentre
+la zona `America/Lima` usada al inicializar los datos sintéticos. Si el entorno
+virtual ya existía, vuelve a ejecutar `python -m pip install -e ".[dev]"` con
+el entorno activado para instalar la dependencia. Consulta el
+[README del backend](./backend/README.md) para más opciones de configuración.
+
 2. Historia de usuario
 
 Como analista de operaciones,
