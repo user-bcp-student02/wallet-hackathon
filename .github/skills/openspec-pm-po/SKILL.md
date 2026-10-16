@@ -1,5 +1,5 @@
 ---
-name: pm-po-product-discovery
+name: openspec-pm-po
 description: "Use when shaping a wallet reconciliation product need into a validated problem statement, user story, acceptance criteria, product specification, or prioritized backlog item; verify behavior against the project's code, tests, and SDD."
 argument-hint: "Describe the product need, user problem, or candidate finding to shape."
 ---
